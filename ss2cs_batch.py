@@ -63,6 +63,7 @@ def processfile(inFile, outFile, DIR_PATH, save = False):
 # %%    
 def concat(inFile, outFile, DIR_PATH):
     ctfiles = [f for f in os.listdir(inFile) if f.endswith(".ct")]  
+    names = ['model', 'resid', 'resname', 'nucleus', 'simcs', 'id']
     prefix = []
     for file in ctfiles:
         prefix.append(file[:4])
@@ -79,9 +80,11 @@ def concat(inFile, outFile, DIR_PATH):
             inFileName = os.path.join(inFile, file)
             outFileName = os.path.join(outFile, file.replace(".ct", ".csv"))
             df_cur = processfile(inFileName, outFileName, DIR_PATH, False)
-            df_cur["id"] = order
+            df_cur["model"] = order
+            df_cur["id"] = x
             df = pd.concat([df, df_cur])
-        df = df.drop(columns = [2]).reset_index(drop = True).rename(columns = {0:"nucleus", 1: "shift"})
+        df = df.drop(columns = [2]).reset_index(drop = True).rename(columns = {0:"nucleus", 1: "simcs", "i_resname": "resname"})
+        df = df[names]
         df_list.append(df)
     return list(zip(df_list, prefix))
 
@@ -105,7 +108,7 @@ def main():
 
     csv_files = concat(inFile, outFile, DIR_PATH)
     for df, file_name in csv_files:
-        df.to_csv(os.path.join(outFile, file_name + ".csv"))
+        df.to_csv(os.path.join(outFile, file_name + ".csv"), sep = " ", header = None, index = False)
     
     print("Done")
 # %%
