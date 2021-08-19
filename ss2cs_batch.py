@@ -19,7 +19,7 @@ def load_ss2cs_model(nucleus, DIR_PATH):
   model = pickle.load(open(filename, 'rb'))
   return(model)
 
-def processfile(inFile, outFile, DIR_PATH):
+def processfile(inFile, outFile, DIR_PATH, save = False):
     
     # initialize    
     rna = "user"
@@ -56,9 +56,35 @@ def processfile(inFile, outFile, DIR_PATH):
         output_error = pd.Series(["."]*len(features))
         result = pd.concat([output_resname, output_resid, output_nucleus, output_cs, output_error],axis=1)
         results = pd.concat([results, result],ignore_index=True)
-        
-    results.to_csv(outFile, sep=' ', header=None, index=False)
+    
+    if save:
+        results.to_csv(outFile, sep=' ', header=None, index=False)
+    return results
 # %%    
+def concat(inFile, outFile, DIR_PATH):
+    ctfiles = [f for f in os.listdir(inFile) if f.endswith(".ct")]  
+    prefix = []
+    for file in ctfiles:
+        prefix.append(file[:4])
+    prefix = list(set(prefix))
+    df_list = []
+    for x in prefix:
+        print(x)
+        ctfiles_x = [f for f in ctfiles if f[:4] == x]
+        df = pd.DataFrame()
+        orders = [int(file.split(".")[0].split("_")[1]) for file in ctfiles_x]
+        orders.sort()
+        for order in orders:
+            file = x + "_" + str(order) + ".ct"
+            inFileName = os.path.join(inFile, file)
+            outFileName = os.path.join(outFile, file.replace(".ct", ".csv"))
+            df_cur = processfile(inFileName, outFileName, DIR_PATH, False)
+            df_cur["id"] = order
+            df = pd.concat([df, df_cur])
+        df = df.drop(columns = [2]).reset_index(drop = True).rename(columns = {0:"nucleus", 1: "shift"})
+        df_list.append(df)
+    return list(zip(df_list, prefix))
+
 def main():
     # configure parser
     parser = argparse.ArgumentParser()
@@ -76,13 +102,14 @@ def main():
     ctfiles = [f for f in os.listdir(inFile) if f.endswith(".ct")]
     print("Current Output:", os.path.abspath(outFile))
     print("Processing Files:", len(ctfiles))
-    for x in tqdm(ctfiles):
-        inFileName = os.path.join(inFile, x)
-        outFileName = os.path.join(outFile, x.replace(".ct", ".csv"))
-        processfile(inFileName, outFileName, DIR_PATH)
+
+    csv_files = concat(inFile, outFile, DIR_PATH)
+    for df, file_name in csv_files:
+        df.to_csv(os.path.join(outFile, file_name + ".csv"))
     
     print("Done")
 # %%
+
     
 if __name__ == "__main__":
     main()
